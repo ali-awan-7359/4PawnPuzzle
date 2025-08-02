@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import Tile from "./Tile";
 import Piece from "./Piece";
 import { getLegalMoves } from "./PieceUtils";
@@ -18,67 +18,87 @@ function Board() {
   const [legalMoves, setLegalMoves] = useState([]);
   const [draggedFrom, setDraggedFrom] = useState(null);
 
-  const handleDragStart = (row, col) => {
-    const piece = layout[row][col];
-    if (!piece) return;
+  // Precompute missing squares for this layout
+  const missingMap = new Set();
+  layout.forEach((row, r) =>
+    row.forEach((_, c) => {
+      const rank = 6 - r;
+      if (rank === 5 || (rank === 1 && c < 3)) {
+        missingMap.add(`${r},${c}`);
+      }
+    })
+  );
 
-    setDraggedFrom({ row, col });
-    const moves = getLegalMoves(piece, { row, col }, layout);
-    setSelected({ row, col });
+  const handleDragStart = (r, c) => {
+    const piece = layout[r][c];
+    if (!piece) return;
+    setDraggedFrom({ r, c });
+    const moves = getLegalMoves(piece, { row: r, col: c }, layout, missingMap);
+    setSelected({ row: r, col: c });
     setLegalMoves(moves);
   };
 
-  const handleDrop = (row, col) => {
+  const handleDragEnter = (r, c) => {
     if (!draggedFrom) return;
-    const legal = getLegalMoves(
-      layout[draggedFrom.row][draggedFrom.col],
-      draggedFrom,
-      layout
-    );
-    const isLegal = legal.some((m) => m.row === row && m.col === col);
-    if (isLegal) {
-      const newLayout = layout.map((r) => [...r]);
-      newLayout[row][col] = layout[draggedFrom.row][draggedFrom.col];
-      newLayout[draggedFrom.row][draggedFrom.col] = null;
-      setLayout(newLayout);
+    const { r: fr, c: fc } = draggedFrom;
+    const piece = layout[fr][fc];
+    const moves = getLegalMoves(piece, { row: fr, col: fc }, layout, missingMap);
+    setLegalMoves(moves);
+  };
+
+  const handleDrop = (r, c) => {
+    if (!draggedFrom) return;
+    const { r: fr, c: fc } = draggedFrom;
+    const moves = getLegalMoves(layout[fr][fc], { row: fr, col: fc }, layout, missingMap);
+    const valid = moves.some((m) => m.row === r && m.col === c);
+    if (valid) {
+      const next = layout.map((row) => [...row]);
+      next[r][c] = layout[fr][fc];
+      next[fr][fc] = null;
+      setLayout(next);
     }
     setDraggedFrom(null);
     setSelected(null);
     setLegalMoves([]);
   };
 
-  const handleClick = (row, col) => {
-    const clickedPiece = layout[row][col];
-
+  const handleClick = (r, c) => {
+    const piece = layout[r][c];
     if (selected) {
-      const isLegal = legalMoves.some((m) => m.row === row && m.col === col);
-      if (isLegal) {
-        const newLayout = layout.map((r) => [...r]);
-        newLayout[row][col] = layout[selected.row][selected.col];
-        newLayout[selected.row][selected.col] = null;
-        setLayout(newLayout);
+      const valid = legalMoves.some((m) => m.row === r && m.col === c);
+      if (valid) {
+        const next = layout.map((row) => [...row]);
+        next[r][c] = layout[selected.row][selected.col];
+        next[selected.row][selected.col] = null;
+        setLayout(next);
       }
       setSelected(null);
       setLegalMoves([]);
-    } else if (clickedPiece) {
-      const moves = getLegalMoves(clickedPiece, { row, col }, layout);
-      setSelected({ row, col });
+    } else if (piece) {
+      const moves = getLegalMoves(piece, { row: r, col: c }, layout, missingMap);
+      setSelected({ row: r, col: c });
       setLegalMoves(moves);
     }
   };
 
   return (
     <div className="w-full max-w-[380px] sm:max-w-[420px] md:max-w-[500px] mx-auto">
-      <div className="grid grid-cols-4 grid-rows-6 gap-[2px] bg-[#7e5d48] p-[4px] rounded-xl shadow-[inset_0_2px_8px_rgba(0,0,0,0.8),_0_4px_16px_rgba(0,0,0,0.5)]">
-        {layout.flatMap((rowArr, rowIndex) =>
-          rowArr.map((pieceCode, colIndex) => {
-            const rank = 6 - rowIndex;
-            const file = String.fromCharCode(97 + colIndex);
-            const coord = `${file}${rank}`;
-            const isMissing = rank === 5 || (rank === 1 && colIndex < 3);
-            const isHighlighted = legalMoves.some(
-              (m) => m.row === rowIndex && m.col === colIndex
-            );
+      <div className="grid grid-cols-4 grid-rows-6 gap-[2px] bg-[#7e5d48] p-1 rounded-xl shadow-inner">
+        {layout.map((rowArr, r) =>
+          rowArr.map((pieceCode, c) => {
+            const rank = 6 - r;
+            const coord = `${String.fromCharCode(97 + c)}${rank}`;
+            const isMissing = missingMap.has(`${r},${c}`);
+
+            // is this square a legal move?
+            const isHighlighted = legalMoves.some((m) => m.row === r && m.col === c);
+
+            // is this a knight threat? (only if selected piece is a knight and target is enemy)
+            const isKnight =
+              selected && layout[selected.row][selected.col]?.[1] === "n";
+            const isEnemy =
+              pieceCode && selected && pieceCode[0] !== layout[selected.row][selected.col][0];
+            const isThreat = isHighlighted && isKnight && isEnemy;
 
             return (
               <Tile
@@ -86,15 +106,14 @@ function Board() {
                 coord={coord}
                 isMissing={isMissing}
                 isHighlighted={isHighlighted}
-                onClick={() => handleClick(rowIndex, colIndex)}
-                onDrop={() => handleDrop(rowIndex, colIndex)}
+                isThreat={isThreat}
+                onClick={() => handleClick(r, c)}
+                onDrop={() => handleDrop(r, c)}
                 onDragOver={(e) => e.preventDefault()}
+                onDragEnter={() => handleDragEnter(r, c)}
               >
                 {!isMissing && pieceCode && (
-                  <Piece
-                    code={pieceCode}
-                    onDragStart={() => handleDragStart(rowIndex, colIndex)}
-                  />
+                  <Piece code={pieceCode} onDragStart={() => handleDragStart(r, c)} />
                 )}
               </Tile>
             );

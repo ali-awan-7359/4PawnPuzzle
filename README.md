@@ -85,7 +85,7 @@ All valid moves are highlighted in **green**.
 1. Clone the repository:
 
 ```bash
-git clone [https://github.com/ali-awan-7350/4PawnPuzzle.git](https://github.com/ali-awan-7350/4PawnPuzzle.git)
+git clone https://github.com/ali-awan-7350/4PawnPuzzle.git
 cd 4PawnPuzzle
 ```
 
@@ -101,7 +101,7 @@ npm install
 npm start
 ```
 
-4. Open [http://localhost:5173](http://localhost:5173) in your browser to view it.
+4. Open http://localhost:5173 in your browser to view it.
 
 
 ---

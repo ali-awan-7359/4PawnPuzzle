@@ -17,8 +17,8 @@ function Board() {
   const [selected, setSelected] = useState(null);
   const [legalMoves, setLegalMoves] = useState([]);
   const [draggedFrom, setDraggedFrom] = useState(null);
+  const [lastMove, setLastMove] = useState(null);
 
-  // Precompute missing squares for this layout
   const missingMap = new Set();
   layout.forEach((row, r) =>
     row.forEach((_, c) => {
@@ -42,14 +42,24 @@ function Board() {
     if (!draggedFrom) return;
     const { r: fr, c: fc } = draggedFrom;
     const piece = layout[fr][fc];
-    const moves = getLegalMoves(piece, { row: fr, col: fc }, layout, missingMap);
+    const moves = getLegalMoves(
+      piece,
+      { row: fr, col: fc },
+      layout,
+      missingMap
+    );
     setLegalMoves(moves);
   };
 
   const handleDrop = (r, c) => {
     if (!draggedFrom) return;
     const { r: fr, c: fc } = draggedFrom;
-    const moves = getLegalMoves(layout[fr][fc], { row: fr, col: fc }, layout, missingMap);
+    const moves = getLegalMoves(
+      layout[fr][fc],
+      { row: fr, col: fc },
+      layout,
+      missingMap
+    );
     const valid = moves.some((m) => m.row === r && m.col === c);
     if (valid) {
       const next = layout.map((row) => [...row]);
@@ -60,6 +70,7 @@ function Board() {
     setDraggedFrom(null);
     setSelected(null);
     setLegalMoves([]);
+    setLastMove({ from: selected, to: { row, col } });
   };
 
   const handleClick = (r, c) => {
@@ -75,9 +86,15 @@ function Board() {
       setSelected(null);
       setLegalMoves([]);
     } else if (piece) {
-      const moves = getLegalMoves(piece, { row: r, col: c }, layout, missingMap);
+      const moves = getLegalMoves(
+        piece,
+        { row: r, col: c },
+        layout,
+        missingMap
+      );
       setSelected({ row: r, col: c });
       setLegalMoves(moves);
+      setLastMove({ from: selected, to: { row, col } });
     }
   };
 
@@ -90,14 +107,20 @@ function Board() {
             const coord = `${String.fromCharCode(97 + c)}${rank}`;
             const isMissing = missingMap.has(`${r},${c}`);
 
-            // is this square a legal move?
-            const isHighlighted = legalMoves.some((m) => m.row === r && m.col === c);
+            const isHighlighted = legalMoves.some(
+              (m) => m.row === r && m.col === c
+            );
+            const isLastMoveFrom =
+              lastMove?.from?.row === r && lastMove?.from?.col === c;
+            const isLastMoveTo =
+              lastMove?.to?.row === r && lastMove?.to?.col === c;
 
-            // is this a knight threat? (only if selected piece is a knight and target is enemy)
             const isKnight =
               selected && layout[selected.row][selected.col]?.[1] === "n";
             const isEnemy =
-              pieceCode && selected && pieceCode[0] !== layout[selected.row][selected.col][0];
+              pieceCode &&
+              selected &&
+              pieceCode[0] !== layout[selected.row][selected.col][0];
             const isThreat = isHighlighted && isKnight && isEnemy;
 
             return (
@@ -110,10 +133,16 @@ function Board() {
                 onClick={() => handleClick(r, c)}
                 onDrop={() => handleDrop(r, c)}
                 onDragOver={(e) => e.preventDefault()}
+                isLastMoveFrom={isLastMoveFrom}
+                isLastMoveTo={isLastMoveTo}
                 onDragEnter={() => handleDragEnter(r, c)}
               >
                 {!isMissing && pieceCode && (
-                  <Piece code={pieceCode} onDragStart={() => handleDragStart(r, c)} />
+                  <Piece
+                    key={pieceCode + "-" + r + "-" + c}
+                    code={pieceCode}
+                    onDragStart={() => handleDragStart(r, c)}
+                  />
                 )}
               </Tile>
             );

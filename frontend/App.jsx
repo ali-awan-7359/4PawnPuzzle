@@ -7,7 +7,6 @@ function App() {
         <h1 className="text-[#442a1d] text-3xl font-bold drop-shadow-md">
           Capture the pawns!
         </h1>
-
         <Board />
       </div>
     </div>

@@ -12,7 +12,13 @@ function Tile({
   isThreat,
 }) {
   if (isMissing) return <div className="w-full aspect-square opacity-0" />;
-
+  // if (isMissing) {
+  //   return (
+  //     <div className="w-full aspect-square flex items-center justify-center bg-[#333] text-white text-sm font-semibold select-none">
+  //       ✖
+  //     </div>
+  //   );
+  // }
   // Determine default wood color
   const isDark = (coord.charCodeAt(0) + parseInt(coord[1], 10)) % 2 === 1;
   const woodColor = isDark ? "#6b4226" : "#d8b083";

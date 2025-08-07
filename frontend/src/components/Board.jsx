@@ -19,6 +19,7 @@ function Board() {
   const [draggedFrom, setDraggedFrom] = useState(null);
   const [lastMove, setLastMove] = useState(null);
 
+  // ... (all the functions like handleDragStart, handleClick, etc. are unchanged)
   const missingMap = new Set();
   layout.forEach((row, r) =>
     row.forEach((_, c) => {
@@ -66,11 +67,11 @@ function Board() {
       next[r][c] = layout[fr][fc];
       next[fr][fc] = null;
       setLayout(next);
+      setLastMove({ from: { row: fr, col: fc }, to: { row: r, col: c } });
     }
     setDraggedFrom(null);
     setSelected(null);
     setLegalMoves([]);
-    setLastMove({ from: selected, to: { row, col } });
   };
 
   const handleClick = (r, c) => {
@@ -82,6 +83,7 @@ function Board() {
         next[r][c] = layout[selected.row][selected.col];
         next[selected.row][selected.col] = null;
         setLayout(next);
+        setLastMove({ from: selected, to: { row: r, col: c } });
       }
       setSelected(null);
       setLegalMoves([]);
@@ -94,13 +96,17 @@ function Board() {
       );
       setSelected({ row: r, col: c });
       setLegalMoves(moves);
-      setLastMove({ from: selected, to: { row, col } });
     }
   };
 
   return (
-    <div className="w-full max-w-[380px] sm:max-w-[420px] md:max-w-[500px] mx-auto">
-      <div className="grid grid-cols-4 grid-rows-6 gap-[2px] bg-[#7e5d48] p-1 rounded-xl shadow-inner">
+    // FINAL FIX: This robustly handles both mobile (portrait) and desktop (landscape).
+    // - `aspect-[4/6]`: Keeps the board shape correct.
+    // - `portrait:w-[90vw]`: In portrait mode (phones), bases size on screen WIDTH.
+    // - `landscape:h-[80vh]`: In landscape mode (laptops), bases size on screen HEIGHT.
+    // - `max-w-md landscape:max-h-[650px]`: Sets sensible maximums for each orientation.
+    <div className="aspect-[4/6] portrait:w-[90vw] landscape:h-[80vh] max-w-md landscape:max-h-[650px]">
+      <div className="w-full h-full grid grid-cols-4 grid-rows-6 gap-[2px] bg-[#7e5d48] p-1 rounded-xl shadow-inner">
         {layout.map((rowArr, r) =>
           rowArr.map((pieceCode, c) => {
             const rank = 6 - r;
